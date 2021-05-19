@@ -1,0 +1,6 @@
+name: TradingSystem
+version: ${project.version}
+main: com.zoomdk.tradingsystem.Main
+commands:
+  traktor:
+  tradingsystem:
