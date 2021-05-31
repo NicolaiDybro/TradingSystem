@@ -6,7 +6,6 @@ import org.apache.commons.lang.WordUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -15,11 +14,9 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-import java.lang.reflect.Array;
 import java.util.*;
 
 import static java.lang.Thread.sleep;
@@ -32,6 +29,22 @@ public class Storm implements Listener {
     public String npcKey;
     public Integer npcLevel;
     public Integer npcXP;
+
+
+
+    public static void executeCommand(String string) {
+        if (string.contains("[console]")) {
+            String commandText = string.replaceAll("\\[console\\]", "");
+            Bukkit.dispatchCommand(Bukkit.getServer().getConsoleSender(), commandText);
+        }
+    }
+
+
+    public static String replaceText(String string, String trader, Player player) {
+        ConfigurationSection config = DataConfig.get().getConfigurationSection(String.valueOf(player.getUniqueId()));
+        string = string.replaceAll("%LEVEL%", config.getString(trader + "." + "LEVEL"));
+        return string;
+    }
 
 
     public List<Integer> initializeItems() {
@@ -140,32 +153,40 @@ public class Storm implements Listener {
         Object[] fields = NPCConfig.get().getConfigurationSection("NPCs").getKeys(false).toArray();
         String navn = "";
         List<String> npcname = new ArrayList<>();
+        String invname = e.getInventory().getName();
+        invname = invname.replace(" §8§l»", "");
+        String keyNavn = null;
         for (Object key : fields) {
             navn = NPCConfig.get().getString("NPCs." + key + ".navn");
             navn = navn.replaceAll("\\[", "").replaceAll("\\]", "").replaceAll("&", "§");
             npcname.add(navn);
+            if (invname.equals(navn)) {
+                keyNavn = key.toString();
+            }
         }
-        String invname = e.getInventory().getName();
-        invname = invname.replace(" §8§l»", "");
         if (npcname.contains(invname)) {
-
             e.setCancelled(true);
             final Player p = (Player) e.getWhoClicked();
             final ItemStack clickedItem = e.getCurrentItem();
             if (clickedItem == null || clickedItem.getType() == Material.AIR) return;
+            Object[] items = NPCConfig.get().getConfigurationSection("NPCs." + keyNavn + ".trades." + "0." + ".items").getKeys(false).toArray();
+            for (Object key : items) {
+                if (e.getInventory().getItem(NPCConfig.get().getInt("NPCs." + keyNavn + ".trades." + "0." + ".items." + key + ".slot")).equals(clickedItem)) {
+                    List<String> command = NPCConfig.get().getStringList("NPCs." + keyNavn + ".trades." + "0." + ".items." + key + ".do");
+                    for (String key2 : command) {
+                        executeCommand(key2);
+                    }
 
+                }
+            }
 
-
-
-
-            if (invname.equals("§6test npc"))
                 if (e.getInventory().getItem(13).equals(clickedItem)) {
                     ItemMeta meta = inv.getItem(13).getItemMeta();
                     List<String> lore = meta.hasLore() ? meta.getLore() : new ArrayList<>();
                     int count = 0;
                     int totalcount = 32;
-                    for (int i = 0; i < lore.size(); i++) {
-                        if (lore.get(i).contains("§8[§a§l✓§8] §232 §7Iron Ingots")) {
+                    for (String s : lore) {
+                        if (s.contains("§8[§a§l✓§8] §232 §7Iron Ingots")) {
 
                             for (ItemStack item : p.getInventory().getContents()) {
                                 if (item == null)
@@ -186,9 +207,9 @@ public class Storm implements Listener {
                                             Bukkit.broadcastMessage("cc" + totalcount);
 
                                         }
+
+
                                     }
-
-
                                 }
                             }
                         }
@@ -266,18 +287,20 @@ public class Storm implements Listener {
                             if (loreMaterial.equals("POTATOE")) {
                                 loreMaterial = "POTATO_ITEM";
                             }
+                            int count = 0;
                             for (ItemStack checkItem : player.getInventory().getContents()) {
-                                int count = 0;
+
                                 if (checkItem == null)
                                     continue;
                                 if (checkItem.getType().equals(Material.valueOf(loreMaterial))) {
+                                    if (checkItem.getItemMeta().getDisplayName() == null) {
                                     count += checkItem.getAmount();
                                     if (count >= Integer.parseInt(loreAntal)) {
                                         lore.set(i, lore.get(i).replace("§8[§c§l✘§8] ", "§8[§a§l✓§8] ").replaceAll("§4", "§2"));
-
                                         itemMeta.setLore(lore);
                                         item.setItemMeta(itemMeta);
                                         player.updateInventory();
+                                    }
                                 }
                                 }
                             }
